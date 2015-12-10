@@ -87,7 +87,6 @@ def threewayplot(fig,xdata,ydata,i):
     plt.figure(fig)
     doubledata = zip(xdata,ydata)
     for j,d in enumerate(doubledata):
-        print j
         plt.subplot(3,1,j+1)
         plt.plot(d[0],d[1],colors[i*3+j])
         plt.ylabel(keys[i*3+j])
@@ -104,12 +103,12 @@ targetfrequency = int(sys.argv[1])
 fin = sys.argv[2]
 
 data = readacceldata(fin)
-dsindex = 5                             # set to 1 for no downsampling
+dsindex = 1                             # set to 1 for no downsampling
 data = downsampledata(data,dsindex)
 samplingrate = 128.
 samplespacing = dsindex*1/samplingrate
 
-
+'''
 ## Test Data
 T = 0.05
 nsamples = T * 5000
@@ -125,23 +124,11 @@ for key in keys: data[key] = x
 data['count'] = t
 samplingrate = 5000.
 samplespacing = 1/samplingrate
-
+'''
 
 # loop over both accelerometer outputs
 for i in range(2):
     # plot the input data
-    plt.figure(p); p+=1
-    plt.subplot(3,1,1)
-    plt.title("Accelerometer Results: "+" ".join(keys[i*3:i*3+3]))
-    plt.plot(data['count'],data[keys[i*3]],colors[i*3])
-    plt.ylabel(keys[i*3])
-    plt.subplot(3,1,2)
-    plt.plot(data['count'],data[keys[i*3+1]],colors[i*3+1])
-    plt.ylabel(keys[i*3+1])
-    plt.subplot(3,1,3)
-    plt.plot(data['count'],data[keys[i*3+2]],colors[i*3+2])
-    plt.xlabel("Time, 1/128s")
-    plt.ylabel(keys[i*3+2])
     threewayplot(p,3*[data['count']],
         [data[keys[i*3]],data[keys[i*3+1]],data[keys[i*3+2]]],i)
     p+=1
@@ -152,44 +139,33 @@ for i in range(2):
     yfft = np.fft.fft(data[keys[i*3+1]]); yfft.real[0] = 0
     zfft = np.fft.fft(data[keys[i*3+2]]); zfft.real[0] = 0
     
-    plt.figure(p); p+=1
-    plt.subplot(3,1,1)
-    plt.title("FFT on "+" ".join(keys[i*3:i*3+3]))
-    plt.plot(ffreq,np.sqrt(xfft.real**2+xfft.imag**2),colors[i*3])
-    plt.ylabel(keys[i*3])
-    plt.subplot(3,1,2)
-    plt.plot(ffreq,np.sqrt(yfft.real**2+yfft.imag**2),colors[i*3+1])
-    plt.ylabel(keys[i*3+1])
-    plt.subplot(3,1,3)
-    plt.plot(ffreq,np.sqrt(zfft.real**2+zfft.imag**2),colors[i*3+2])
-    plt.ylabel(keys[i*3+2])
+    threewayplot(p,3*[ffreq],
+        [np.sqrt(xfft.real**2+xfft.imag**2),
+         np.sqrt(yfft.real**2+yfft.imag**2),
+         np.sqrt(zfft.real**2+zfft.imag**2)]
+         ,i)
+    p+=1
+
     
     # bandpass the input target frequency
-    lowcut = targetfrequency*2/4.       # modify these as needed for the band pass range
-    highcut = targetfrequency*10/4.
+    lowcut = targetfrequency*3/4.       # modify these as needed for the band pass range
+    highcut = targetfrequency*5/4.
     print "\nBandpass filter\nLow: "+str(lowcut)+"hz\nHigh: "+str(highcut)+"hz\n"
 
     ord = 3
     xbp = butter_bandpass_filter(data[keys[i*3]], lowcut, highcut, samplingrate, order=ord)
     ybp = butter_bandpass_filter(data[keys[i*3+1]], lowcut, highcut, samplingrate, order=ord)
     zbp = butter_bandpass_filter(data[keys[i*3+2]], lowcut, highcut, samplingrate, order=ord)
-    plt.figure(p); p+=1
-    plt.subplot(3,1,1)
-    plt.plot(data['count'], xbp, label='Filtered signal (%g Hz)' % targetfrequency)
-    plt.subplot(3,1,2)    
-    plt.plot(data['count'], ybp, label='Filtered signal (%g Hz)' % targetfrequency)
-    plt.subplot(3,1,3)
-    plt.plot(data['count'], zbp, label='Filtered signal (%g Hz)' % targetfrequency)
-    plt.xlabel('time (seconds)')
+    threewayplot(p,3*[data['count']],[xbp,ybp,zbp],i)
+    p+=1
     
     xbpfft,ybpfft,zbpfft = np.fft.fft(xbp),np.fft.fft(ybp),np.fft.fft(zbp)
-    plt.figure(p); p+=1
-    plt.subplot(3,1,1)
-    plt.plot(ffreq,np.sqrt(xbpfft.real**2+xbpfft.imag**2),colors[i*3])
-    plt.subplot(3,1,2)
-    plt.plot(ffreq,np.sqrt(ybpfft.real**2+ybpfft.imag**2),colors[i*3+1])
-    plt.subplot(3,1,3)
-    plt.plot(ffreq,np.sqrt(zbpfft.real**2+zbpfft.imag**2),colors[i*3+2])
+    threewayplot(p,3*[ffreq],
+        [np.sqrt(xbpfft.real**2+xbpfft.imag**2),
+         np.sqrt(ybpfft.real**2+ybpfft.imag**2),
+         np.sqrt(zbpfft.real**2+zbpfft.imag**2)]
+         ,i)
+    p+=1
 plt.show()
 
 
