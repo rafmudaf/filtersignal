@@ -179,7 +179,7 @@ if __name__=="__main__":
         
         # bandpass the input target frequency
         bandwidth = 20 #hz
-        lowcut = targetfrequency-bandwidth/2.
+        lowcut = max(targetfrequency-bandwidth/2.,1)
         highcut = targetfrequency+bandwidth/2.
         ord = 3
         xbp = butter_bandpass_filter(x, lowcut, highcut, samplingrate, order=ord)
