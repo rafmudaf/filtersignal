@@ -1,6 +1,5 @@
 #!/usr/bin/python
 import sys
-import csv
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import butter, lfilter, filtfilt, freqz
@@ -112,6 +111,29 @@ colors = [marker+"b",marker+"r",marker+"g",marker+"b",marker+"r",marker+"g"]
 
 
 if __name__=="__main__":
+    '''
+        usage: ./fftaccelerometer.py target_frequency inputfile
+        example: ./fftacelerometer.py 10 eco1.csv
+        notes:
+            downsampling is available by modifying dsindex. see def downsampledata
+            a test signal is available by uncommenting ## Test Data block
+            pass band settings are at 'lowcut' and 'highcut'
+            uncomment the save figures block towards to the end to automatically write out figures
+            
+        algorithm:
+            get inputs - targetfrequency, input files
+            read input data into a python dict with headers as keys
+            down sample data, if needed
+            calculate samplespacing based on sampling rate and down sampling
+            
+            get fft from input with the mean value subtracted
+                this gets rid of the high frequency at 0 hz corresponding to k=0 in DFT
+            put input through a bandpass filter based on target frequency, lowcut, and highcut
+            get fft from the pass band results
+            
+            plot everything as needed
+            save plots as needed
+    '''
     # get inputs
     targetfrequency = float(sys.argv[1])
     fin = sys.argv[2]
@@ -149,30 +171,31 @@ if __name__=="__main__":
         y = data[keys[i*3+1]]
         z = data[keys[i*3+2]]
         
-        # plot the input data
-        threewayplot(p,3*[t],[x,y,z],i,"Acceleration","Time, 128hz")
-        p+=1
-        
-        '''
-        # bandpass the input signal to nullify the data
-        lowcut = 0
-        highcut = 50
-        ord = 3
-        x = butter_bandpass_filter(x, lowcut, highcut, samplingrate, order=ord)
-        y = butter_bandpass_filter(y, lowcut, highcut, samplingrate, order=ord)
-        z = butter_bandpass_filter(z, lowcut, highcut, samplingrate, order=ord)
-        threewayplot(p,3*[t],[x,y,z],i,
-            "Nullified Acceleration, Pass Band Range: {0:.3f}hz to {1:.3f}hz".format(lowcut,highcut),
-            "Time, 128hz"
-            )
-        p+=1
-        '''
-
-        # fft on the input and plot
+        # fft on the input
         ffreq = np.fft.fftfreq(len(t),samplespacing)          # get the DFT sample frequencies, window size is len(data['count'])
         xfft = np.fft.fft( x-np.mean(x) )                     # subtract the mean, k=0 in DFT
         yfft = np.fft.fft( y-np.mean(y) )
         zfft = np.fft.fft( z-np.mean(z) )
+        
+        # bandpass the input target frequency
+        bandwidth = 20 #hz
+        lowcut = targetfrequency-bandwidth/2.
+        highcut = targetfrequency+bandwidth/2.
+        ord = 3
+        xbp = butter_bandpass_filter(x, lowcut, highcut, samplingrate, order=ord)
+        ybp = butter_bandpass_filter(y, lowcut, highcut, samplingrate, order=ord)
+        zbp = butter_bandpass_filter(z, lowcut, highcut, samplingrate, order=ord)
+        
+        # fft on the pass band
+        xbpfft = np.fft.fft( xbp-np.mean(xbp) )
+        ybpfft = np.fft.fft( ybp-np.mean(ybp) )
+        zbpfft = np.fft.fft( zbp-np.mean(zbp) )
+        
+        # plot the input data
+        threewayplot(p,3*[t],[x,y,z],i,"Acceleration","Time, 128hz")
+        p+=1
+
+        # plot the fft on input
         threewayplot(
             p,
             3*[ffreq],
@@ -185,14 +208,7 @@ if __name__=="__main__":
              "Amplitude")
         p+=1
 
-        # bandpass the input target frequency
-        bandwidth = 1 #hz
-        lowcut = targetfrequency-bandwidth/2.
-        highcut = targetfrequency+bandwidth/2.
-        ord = 6
-        xbp = butter_bandpass_filter(x, lowcut, highcut, samplingrate, order=ord)
-        ybp = butter_bandpass_filter(y, lowcut, highcut, samplingrate, order=ord)
-        zbp = butter_bandpass_filter(z, lowcut, highcut, samplingrate, order=ord)
+        # plot the pass band data
         threewayplot(
             p,
             3*[data['count']],
@@ -203,9 +219,7 @@ if __name__=="__main__":
             )
         p+=1
         
-        xbpfft = np.fft.fft(xbp)
-        ybpfft = np.fft.fft(ybp)
-        zbpfft = np.fft.fft(zbp)
+        # plot the fft on pass band
         threewayplot(
             p,
             3*[ffreq],
@@ -218,13 +232,13 @@ if __name__=="__main__":
              "Amplitude")
         p+=1
 
-    
+
     # save figures in directories corresponding to each input file
     for i in range(1,p):
         plt.figure(i)
         savedir = fin.split(".")[0]
         plt.gcf().savefig(savedir+"/figure"+str(i)+".png", dpi=300)  
-    
+
     #plt.show()
 
 
